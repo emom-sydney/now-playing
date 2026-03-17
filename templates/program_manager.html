@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Program Manager</title>
+  <style>
+    :root {
+      --bg: #111827;
+      --panel: #1f2937;
+      --panel-2: #374151;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --danger: #ef4444;
+      --success: #16a34a;
+      --border: #4b5563;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    h1 { margin-top: 0; font-size: 1.8rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.2);
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+    .drag {
+      cursor: grab;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      user-select: none;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: var(--text);
+      font-size: 1rem;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-size: 0.98rem;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .status {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .status.error { color: #fca5a5; }
+    .hidden { display: none; }
+    .act-button {
+      width: 100%;
+      text-align: left;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      transition: 0.15s ease;
+    }
+    .act-button.active {
+      background: rgba(22,163,74,.22);
+      border-color: #22c55e;
+      box-shadow: inset 0 0 0 1px rgba(34,197,94,.45);
+    }
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .muted { color: var(--muted); }
+    .preview {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+    .preview-value {
+      margin-top: 6px;
+      font-size: 1.05rem;
+      color: #bbf7d0;
+      word-break: break-word;
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Program Manager</h1>
+    <div class="card">
+      <div class="topline">
+        <div class="muted">Arrange acts, lock the list, then tap the current act.</div>
+        <div class="muted">Output: <code>/now-playing.txt</code></div>
+      </div>
+
+      <div id="editMode">
+        <div id="rows"></div>
+        <div class="toolbar">
+          <button id="addBtn" class="btn-primary" type="button">+ Add act</button>
+          <button id="doneBtn" class="btn-secondary" type="button">Done</button>
+        </div>
+      </div>
+
+      <div id="playMode" class="hidden">
+        <div id="actButtons"></div>
+        <div class="toolbar">
+          <button id="clearBtn" class="btn-secondary" type="button">Clear current act</button>
+          <button id="editBtn" class="btn-primary" type="button">Edit list</button>
+        </div>
+      </div>
+
+      <div id="status" class="status">Loading...</div>
+      <div class="preview">
+        <div class="muted">Current `/now-playing.txt` output</div>
+        <div id="previewValue" class="preview-value">&nbsp;</div>
+      </div>
+    </div>
+  </div>
+
+  <template id="rowTemplate">
+    <div class="row" draggable="true">
+      <div class="drag" title="Drag to reorder">☰</div>
+      <input type="text" maxlength="200" placeholder="Act name">
+      <button class="btn-danger removeBtn" type="button">Remove</button>
+    </div>
+  </template>
+
+  <script>
+    const rowsEl = document.getElementById('rows');
+    const actButtonsEl = document.getElementById('actButtons');
+    const statusEl = document.getElementById('status');
+    const editModeEl = document.getElementById('editMode');
+    const playModeEl = document.getElementById('playMode');
+    const rowTemplate = document.getElementById('rowTemplate');
+    const previewValueEl = document.getElementById('previewValue');
+    const addBtn = document.getElementById('addBtn');
+    const doneBtn = document.getElementById('doneBtn');
+    const editBtn = document.getElementById('editBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    let state = { locked: false, acts: [], selected_act_id: null };
+    let draggedRow = null;
+    let isSaving = false;
+
+    function setStatus(text, isError = false) {
+      statusEl.textContent = text;
+      statusEl.classList.toggle('error', isError);
+    }
+
+    function currentOutputText() {
+      const selectedAct = state.acts.find((act) => act.id === state.selected_act_id);
+      if (selectedAct) {
+        return selectedAct.name;
+      }
+      return ' ';
+    }
+
+    function renderPreview() {
+      const value = currentOutputText();
+      previewValueEl.textContent = value;
+      if (value === ' ') {
+        previewValueEl.innerHTML = '&nbsp;';
+      }
+    }
+
+    function setSaving(saving) {
+      isSaving = saving;
+      addBtn.disabled = saving;
+      doneBtn.disabled = saving || getActsFromRows().length === 0;
+      editBtn.disabled = saving;
+      clearBtn.disabled = saving || state.selected_act_id === null;
+    }
+
+    function createId() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+      return 'act-' + Math.random().toString(16).slice(2) + Date.now().toString(16);
+    }
+
+    function createRow(act = null) {
+      const fragment = rowTemplate.content.cloneNode(true);
+      const row = fragment.querySelector('.row');
+      const input = row.querySelector('input');
+      const removeBtn = row.querySelector('.removeBtn');
+      row.dataset.actId = act?.id || createId();
+      input.value = act?.name || '';
+
+      removeBtn.addEventListener('click', () => {
+        row.remove();
+        setStatus('Unsaved changes');
+        setSaving(false);
+      });
+
+      row.addEventListener('dragstart', () => {
+        draggedRow = row;
+        row.style.opacity = '0.5';
+      });
+
+      row.addEventListener('dragend', () => {
+        row.style.opacity = '1';
+        draggedRow = null;
+      });
+
+      row.addEventListener('dragover', (event) => {
+        event.preventDefault();
+      });
+
+      row.addEventListener('drop', (event) => {
+        event.preventDefault();
+        if (!draggedRow || draggedRow === row) return;
+        const rows = [...rowsEl.children];
+        const draggedIndex = rows.indexOf(draggedRow);
+        const targetIndex = rows.indexOf(row);
+        if (draggedIndex < targetIndex) {
+          row.after(draggedRow);
+        } else {
+          row.before(draggedRow);
+        }
+        setStatus('Unsaved changes');
+        setSaving(false);
+      });
+
+      input.addEventListener('input', () => {
+        setStatus('Unsaved changes');
+        setSaving(false);
+      });
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          createRow();
+          const inputs = rowsEl.querySelectorAll('input');
+          inputs[inputs.length - 1]?.focus();
+        }
+      });
+      rowsEl.appendChild(fragment);
+      setSaving(false);
+    }
+
+    function getActsFromRows() {
+      return [...rowsEl.querySelectorAll('.row')]
+        .map((row) => {
+          const input = row.querySelector('input');
+          const name = input.value.trim();
+          if (!name) {
+            return null;
+          }
+          return { id: row.dataset.actId, name };
+        })
+        .filter(Boolean);
+    }
+
+    async function saveState(nextState) {
+      setSaving(true);
+      try {
+        const response = await fetch('/api/program', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nextState),
+          cache: 'no-store',
+        });
+        if (!response.ok) {
+          throw new Error('Save failed');
+        }
+        state = await response.json();
+        render();
+        return state;
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    function renderEditMode() {
+      editModeEl.classList.remove('hidden');
+      playModeEl.classList.add('hidden');
+      rowsEl.innerHTML = '';
+      if (state.acts.length === 0) {
+        createRow();
+      } else {
+        state.acts.forEach((act) => createRow(act));
+      }
+      setStatus('Edit the list, drag to reorder, then click Done.');
+      doneBtn.disabled = getActsFromRows().length === 0 || isSaving;
+      renderPreview();
+    }
+
+    function renderPlayMode() {
+      editModeEl.classList.add('hidden');
+      playModeEl.classList.remove('hidden');
+      actButtonsEl.innerHTML = '';
+      state.acts.forEach((act, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'act-button' + (state.selected_act_id === act.id ? ' active' : '');
+        button.textContent = act.name;
+        button.addEventListener('click', async () => {
+          const nextActId = state.selected_act_id === act.id ? null : act.id;
+          try {
+            await saveState({ acts: state.acts, locked: true, selected_act_id: nextActId });
+            setStatus(nextActId === null ? 'No act selected.' : 'Current act updated.');
+          } catch {
+            setStatus('Could not update current act.', true);
+          }
+        });
+        actButtonsEl.appendChild(button);
+      });
+      setStatus(state.selected_act_id === null ? 'No act selected. Output is a single space.' : 'Tap a name to change the current act.');
+      clearBtn.disabled = state.selected_act_id === null || isSaving;
+      renderPreview();
+    }
+
+    function render() {
+      if (state.locked) {
+        renderPlayMode();
+      } else {
+        renderEditMode();
+      }
+    }
+
+    addBtn.addEventListener('click', () => createRow());
+
+    doneBtn.addEventListener('click', async () => {
+      const acts = getActsFromRows();
+      if (acts.length === 0) {
+        setStatus('Add at least one act before locking the list.', true);
+        return;
+      }
+      try {
+        await saveState({ acts, locked: true, selected_act_id: null });
+        setStatus('Program locked. Select the current act.');
+      } catch {
+        setStatus('Could not save the program.', true);
+      }
+    });
+
+    editBtn.addEventListener('click', async () => {
+      try {
+        await saveState({ acts: state.acts, locked: false, selected_act_id: state.selected_act_id });
+        setStatus('Unlocked for editing.');
+      } catch {
+        setStatus('Could not unlock the program.', true);
+      }
+    });
+
+    clearBtn.addEventListener('click', async () => {
+      try {
+        await saveState({ acts: state.acts, locked: true, selected_act_id: null });
+        setStatus('Cleared current act.');
+      } catch {
+        setStatus('Could not clear current act.', true);
+      }
+    });
+
+    async function init() {
+      const response = await fetch('/api/program', { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error('Load failed');
+      }
+      state = await response.json();
+      render();
+    }
+
+    init().catch(() => setStatus('Could not load program state.', true));
+  </script>
+</body>
+</html>

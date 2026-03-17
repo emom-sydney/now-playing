@@ -1,0 +1,42 @@
+server {
+    listen 443 ssl http2;
+    server_name sydney.emom.me;
+
+    # ssl_certificate     /etc/letsencrypt/live/sydney.emom.me/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/sydney.emom.me/privkey.pem;
+
+    location = /program-manager {
+        proxy_pass http://127.0.0.1:8000/program-manager;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, max-age=0';
+        add_header Pragma 'no-cache';
+    }
+
+    location = /now-playing.txt {
+        proxy_pass http://127.0.0.1:8000/now-playing.txt;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, max-age=0';
+        add_header Pragma 'no-cache';
+        default_type text/plain;
+    }
+
+    location = /now-playing.html {
+        proxy_pass http://127.0.0.1:8000/now-playing.html;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, max-age=0';
+        add_header Pragma 'no-cache';
+    }
+}

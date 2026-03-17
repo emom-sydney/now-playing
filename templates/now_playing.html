@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="60">
+  <title>Now Playing</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <style>
+    :root {
+      --page-bg: #08131a;
+      --panel-bg: rgba(7, 24, 33, 0.88);
+      --panel-border: rgba(255, 255, 255, 0.14);
+      --text: #f5f7f8;
+      --muted: rgba(245, 247, 248, 0.72);
+      --accent: #63e6be;
+      --accent-strong: #b9fbc0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(43, 111, 140, 0.35), transparent 38%),
+        linear-gradient(180deg, #123040 0%, var(--page-bg) 100%);
+    }
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .panel {
+      width: min(980px, 100%);
+      padding: 32px;
+      border: 1px solid var(--panel-border);
+      border-radius: 28px;
+      background: var(--panel-bg);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .brand img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+    .eyebrow {
+      margin: 0;
+      font-size: 0.85rem;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    h1 {
+      margin: 4px 0 0;
+      font-size: clamp(2.2rem, 6vw, 4.2rem);
+      line-height: 0.95;
+      font-weight: 700;
+    }
+    .current {
+      padding: 24px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(99, 230, 190, 0.18), rgba(255, 255, 255, 0.03));
+      border: 1px solid rgba(185, 251, 192, 0.22);
+    }
+    .current-label {
+      margin: 0 0 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.78rem;
+    }
+    .current-name {
+      margin: 0;
+      font-size: clamp(2.8rem, 7vw, 5.4rem);
+      line-height: 0.95;
+      color: var(--accent-strong);
+      text-wrap: balance;
+    }
+    .current-name.empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+    .program {
+      margin-top: 24px;
+      display: grid;
+      gap: 12px;
+    }
+    .program-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .program-item.active {
+      background: rgba(99, 230, 190, 0.14);
+      border-color: rgba(185, 251, 192, 0.3);
+    }
+    .program-index {
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-width: 2ch;
+    }
+    .program-name {
+      font-size: clamp(1.05rem, 2.4vw, 1.4rem);
+    }
+    .program-badge {
+      color: var(--accent);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+    .footer {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    @media (max-width: 640px) {
+      .panel {
+        padding: 22px;
+        border-radius: 22px;
+      }
+      .brand {
+        align-items: flex-start;
+      }
+      .brand img {
+        width: 56px;
+        height: 56px;
+      }
+      .program-item {
+        grid-template-columns: auto 1fr;
+      }
+      .program-badge {
+        grid-column: 2;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="panel">
+      <header class="brand">
+        <img src="/assets/img/logo.png" alt="EMOM logo">
+        <div>
+          <p class="eyebrow">EMOM Sydney</p>
+          <h1>Now Playing</h1>
+        </div>
+      </header>
+
+      <section class="current">
+        <p class="current-label">Current Act</p>
+        {% if selected_act %}
+          <p class="current-name">{{ selected_act.name }}</p>
+        {% else %}
+          <p class="current-name empty">No act selected</p>
+        {% endif %}
+      </section>
+
+      {% if state.acts %}
+        <section class="program" aria-label="Program">
+          {% for act in state.acts %}
+            <article class="program-item{% if selected_act and act.id == selected_act.id %} active{% endif %}">
+              <div class="program-index">{{ loop.index }}</div>
+              <div class="program-name">{{ act.name }}</div>
+              <div class="program-badge">{% if selected_act and act.id == selected_act.id %}Live{% endif %}</div>
+            </article>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      <div class="footer">
+        Refreshes every minute. Plain text output remains available at <code>/now-playing.txt</code>.
+      </div>
+    </section>
+  </main>
+</body>
+</html>
